@@ -1,7 +1,7 @@
 from django.db import models
 import uuid
 import os
-import hashlib
+from .utils.hash import calculate_file_hash
 
 def file_upload_path(instance, filename):
     """Generate file path for new file upload"""
@@ -18,10 +18,10 @@ class File(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     # Deduplication fields
-    file_hash = models.CharField(max_length=64, unique=True, db_index=True)  # SHA-256 hash
+    file_hash = models.CharField(max_length=64, db_index=True)  
     is_duplicate = models.BooleanField(default=False)
-    original_file = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='duplicates')
-    reference_count = models.PositiveIntegerField(default=1)  # How many files reference this
+    original_file = models.ForeignKey('self', on_delete=models.PROTECT, null=True, blank=True, related_name='duplicates')
+    reference_count = models.PositiveIntegerField(default=1) 
     
     class Meta:
         ordering = ['-uploaded_at']
@@ -31,11 +31,8 @@ class File(models.Model):
     
     def calculate_hash(self):
         """Calculate SHA-256 hash of the file content"""
-        hash_sha256 = hashlib.sha256()
-        with open(self.file.path, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_sha256.update(chunk)
-        return hash_sha256.hexdigest()
+        return calculate_file_hash(self.file)
+    
     
     def save(self, *args, **kwargs):
         # Calculate hash before saving if not already set

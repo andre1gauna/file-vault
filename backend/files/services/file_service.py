@@ -1,0 +1,63 @@
+from django.db import transaction
+from ..models import File
+from .storage_services import calculate_savings
+from ..utils.hash import calculate_file_hash
+from django.db.models import F
+from django.core.files.uploadedfile import UploadedFile
+
+    
+
+@transaction.atomic
+def create_or_update_file(file_obj: UploadedFile) -> tuple[File, dict]:
+    if not file_obj:
+        raise ValueError("No file provided")
+
+    file_hash = calculate_file_hash(file_obj.file)
+    original = File.objects.filter(file_hash=file_hash, is_duplicate=False).first()
+
+    if original:
+        File.objects.filter(pk=original.pk).update(reference_count=F("reference_count") + 1)
+        duplicate = File.objects.create(
+            file=file_obj,
+            original_filename=getattr(file_obj, "name", ""),
+            size=getattr(file_obj, "size", 0),
+            file_type=getattr(file_obj, "content_type", ""),
+            is_duplicate=True,
+            original_file=original,
+            file_hash=file_hash,
+        )
+        calculate_savings()
+        return duplicate, {
+                "message": "File is duplicate, reference created",
+                "duplicate_of": original.id,
+            }
+
+    newf = File.objects.create(
+        file=file_obj,
+        original_filename=getattr(file_obj, "name", ""),
+        size=getattr(file_obj, "size", 0),
+        file_type=getattr(file_obj, "content_type", ""),
+        is_duplicate=False,
+        file_hash=file_hash,
+        reference_count=0,
+    )
+    transaction.on_commit(calculate_savings)
+    return newf, {"is_duplicate": False}
+
+
+@transaction.atomic
+def destroy_file(file_obj: File) -> None:
+    file_to_delete = file_obj.file if file_obj.file else None
+    orig_id = getattr(file_obj, "original_file_id", None) 
+
+    if file_obj.is_duplicate and orig_id:
+        File.objects.filter(
+            pk=orig_id,
+            reference_count__gt=0
+        ).update(reference_count=F("reference_count") - 1)
+
+    file_obj.delete()
+    transaction.on_commit(calculate_savings)
+
+    if file_to_delete:
+        transaction.on_commit(lambda: file_to_delete.delete(save=False))
