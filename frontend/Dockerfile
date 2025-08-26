@@ -1,20 +1,17 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
-# Install dependencies
+# Instala deps a partir dos manifests
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci
 
-# Copy project files
+# Copia o restante do código
 COPY . .
 
-# Build the application
-RUN npm run build
-
-# Install serve to run the application
-RUN npm install -g serve
-
+# Porta do dev server (CRA usa 3000; Vite costuma usar 5173)
 EXPOSE 3000
 
-CMD ["serve", "-s", "build", "-l", "3000"] 
+# CRA: "npm start" — Vite: "npm run dev"
+CMD ["npm", "start"]
+

@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/usr/bin/env bash
+set -e
 
-# Ensure data directory exists and has proper permissions
-mkdir -p /app/data
-chmod -R 777 /app/data
+echo "Applying database migrations..."
+python manage.py migrate --noinput
 
-# Run migrations
-echo "Running migrations..."
-python manage.py makemigrations
-python manage.py migrate
-
-# Start server
-echo "Starting server..."
-gunicorn --bind 0.0.0.0:8000 core.wsgi:application 
+if [ "${DJANGO_DEBUG}" = "True" ] || [ "${DJANGO_DEBUG}" = "true" ]; then
+  echo "Starting Django dev server on 0.0.0.0:8000"
+  exec python manage.py runserver 0.0.0.0:8000
+else
+  echo "Starting Gunicorn on 0.0.0.0:8000"
+  # ajuste 'core.wsgi' para o nome do seu módulo wsgi se for diferente
+  exec gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120
+fi

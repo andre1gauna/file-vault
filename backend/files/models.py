@@ -1,7 +1,7 @@
 from django.db import models
 import uuid
 import os
-from .utils.hash import calculate_file_hash
+from .utils.hash import sha256_from_fieldfile
 
 def file_upload_path(instance, filename):
     """Generate file path for new file upload"""
@@ -18,7 +18,7 @@ class File(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     # Deduplication fields
-    file_hash = models.CharField(max_length=64, db_index=True)  
+    file_hash = models.CharField(max_length=64, db_index=True, null=True, blank=True)  # Apenas para arquivos originais
     is_duplicate = models.BooleanField(default=False)
     original_file = models.ForeignKey('self', on_delete=models.PROTECT, null=True, blank=True, related_name='duplicates')
     reference_count = models.PositiveIntegerField(default=1) 
@@ -31,7 +31,7 @@ class File(models.Model):
     
     def calculate_hash(self):
         """Calculate SHA-256 hash of the file content"""
-        return calculate_file_hash(self.file)
+        return sha256_from_fieldfile(self.file)
     
     
     def save(self, *args, **kwargs):

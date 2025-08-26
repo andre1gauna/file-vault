@@ -1,10 +1,19 @@
 import hashlib
+from django.core.files.uploadedfile import UploadedFile
+from django.db.models.fields.files import FieldFile
 
-def calculate_file_hash(file_obj) -> str:
-    """Calcula SHA256 usando sempre .chunks(), 
-    funciona para UploadedFile e FieldFile."""
-    hash_sha256 = hashlib.sha256()
-    for chunk in file_obj.chunks():
-        hash_sha256.update(chunk)
-    return hash_sha256.hexdigest()
+def sha256_from_uploaded(uploaded: UploadedFile, chunk_size: int = 8192) -> str:
+    h = hashlib.sha256()
+    for chunk in uploaded.chunks(chunk_size):
+        h.update(chunk)
+    return h.hexdigest()
 
+def sha256_from_fieldfile(ff: FieldFile, chunk_size: int = 8192) -> str:
+    h = hashlib.sha256()
+    ff.open("rb")
+    try:
+        for chunk in ff.chunks(chunk_size):
+            h.update(chunk)
+    finally:
+        ff.close()
+    return h.hexdigest()
