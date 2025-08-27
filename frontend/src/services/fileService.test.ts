@@ -88,8 +88,6 @@ describe('fileService', () => {
   const mockBlob = new Blob(['data']);
   mockedAxios.get.mockResolvedValueOnce({ data: mockBlob });
 
-  // 🔧 Mock manual porque JSDOM não implementa
-  // define se não existir
   if (!window.URL.createObjectURL) {
     (window.URL.createObjectURL as any) = jest.fn(() => 'blob-url');
   }
@@ -119,7 +117,6 @@ describe('fileService', () => {
   expect(appendChildSpy).toHaveBeenCalled();
   expect(removeChildSpy).toHaveBeenCalled();
 
-  // restaura mocks
   createObjectURLSpy.mockRestore();
   revokeObjectURLSpy.mockRestore();
   appendChildSpy.mockRestore();

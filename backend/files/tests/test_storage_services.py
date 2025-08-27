@@ -1,12 +1,11 @@
-# backend/files/tests/test_storage_services.py
 import pytest
 from files.models import File, StorageStats
 from files.services import storage_services
 from .fixtures import create_file
 
+
 @pytest.mark.django_db
 def test_calculate_savings_updates_stats(create_file):
-    # Cria arquivo original
     File.objects.create(
         file=create_file("a.txt", b"abc"),
         original_filename="a.txt",
@@ -15,7 +14,6 @@ def test_calculate_savings_updates_stats(create_file):
         is_duplicate=False,
     )
 
-    # Cria arquivo duplicado
     File.objects.create(
         file=create_file("b.txt", b"xyz"),
         original_filename="b.txt",
@@ -24,7 +22,6 @@ def test_calculate_savings_updates_stats(create_file):
         is_duplicate=True,
     )
 
-    # Executa cálculo
     storage_services.calculate_savings()
 
     stats = StorageStats.objects.get(id=1)
@@ -36,9 +33,7 @@ def test_calculate_savings_updates_stats(create_file):
 
 @pytest.mark.django_db
 def test_calculate_distributions_returns_percentages(create_file):
-    # Redefine o MEDIA_ROOT para testes
 
-    # small < 1MB
     File.objects.create(
         file=create_file("small.txt", size=500),  # small (<1MB)
         original_filename="s.txt",

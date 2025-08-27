@@ -23,9 +23,7 @@ class StorageStatsAdmin(admin.ModelAdmin):
     readonly_fields = ['last_updated']
     
     def has_add_permission(self, request):
-        # Só permite uma instância de StorageStats
         return not StorageStats.objects.exists()
     
     def has_delete_permission(self, request, obj=None):
-        # Não permite deletar StorageStats
         return False

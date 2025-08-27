@@ -10,13 +10,11 @@ jest.mock('../services/fileService', () => ({
   },
 }));
 
-// Helper para renderizar com React Query Provider
 const renderWithClient = (ui: React.ReactElement) => {
   const queryClient = new QueryClient();
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };
 
-// Silencia console.error para não poluir a saída
 beforeAll(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -100,7 +98,6 @@ describe('FileUpload component', () => {
 
     expect(await screen.findByText(/Uploading/i)).toBeInTheDocument();
 
-    // Finaliza a promise para liberar o estado
     resolveFn!({});
   });
 });

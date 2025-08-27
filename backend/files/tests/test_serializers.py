@@ -3,6 +3,7 @@ from files.models import File, StorageStats
 from files.serializers import FileSerializer, StorageStatsSerializer
 from .fixtures import create_file
 
+
 @pytest.mark.django_db
 def test_file_serializer_readonly_fields(create_file):
     file_obj = File.objects.create(
@@ -16,12 +17,10 @@ def test_file_serializer_readonly_fields(create_file):
     serializer = FileSerializer(file_obj)
     data = serializer.data
 
-    # Campos obrigatórios presentes
     assert "id" in data
     assert "original_filename" in data
     assert data["original_filename"] == "ser.txt"
 
-    # Campos readonly não devem ser alteráveis
     readonly = FileSerializer.Meta.read_only_fields
     for field in readonly:
         assert field in data
@@ -42,7 +41,5 @@ def test_storage_stats_serializer_includes_percentage():
 
     assert data["total_files"] == 2
     assert data["storage_savings"] == 50
-    # Deve incluir savings_percentage (propriedade do model)
     assert data["savings_percentage"] == 50.0
-    # last_updated vem como string no serializer
     assert "last_updated" in data

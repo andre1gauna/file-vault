@@ -1,4 +1,3 @@
-# backend/files/tests/test_file_service.py
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from files.models import File
@@ -7,7 +6,6 @@ from files.services import file_service
 
 @pytest.mark.django_db
 def test_create_new_file(monkeypatch):
-    # Simula hash fixo
     monkeypatch.setattr("files.services.file_service.sha256_from_uploaded", lambda f: "fakehash123")
 
     file = SimpleUploadedFile("test.txt", b"content", content_type="text/plain")
@@ -24,7 +22,6 @@ def test_create_new_file(monkeypatch):
 def test_create_duplicate_file(monkeypatch):
     monkeypatch.setattr("files.services.file_service.sha256_from_uploaded", lambda f: "samehash")
 
-    # Cria original
     original = File.objects.create(
         file="dummy.txt", original_filename="dummy.txt", file_type="text/plain",
         size=10, file_hash="samehash", is_duplicate=False, reference_count=1
@@ -41,7 +38,6 @@ def test_create_duplicate_file(monkeypatch):
 
 @pytest.mark.django_db
 def test_destroy_file_reduces_reference_count(monkeypatch):
-    # Cria original
     original = File.objects.create(
         file="orig.txt", original_filename="orig.txt", file_type="text/plain",
         size=10, file_hash="hash1", is_duplicate=False, reference_count=1

@@ -17,7 +17,6 @@ class File(models.Model):
     size = models.BigIntegerField()
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
-    # Deduplication fields
     file_hash = models.CharField(max_length=64, db_index=True)  
     is_duplicate = models.BooleanField(default=False)
     original_file = models.ForeignKey('self', on_delete=models.PROTECT, null=True, blank=True, related_name='duplicates')
@@ -35,7 +34,6 @@ class File(models.Model):
     
     
     def save(self, *args, **kwargs):
-        # Calculate hash before saving if not already set
         if not self.file_hash and self.file:
             self.file_hash = self.calculate_hash()
         super().save(*args, **kwargs)
@@ -45,8 +43,8 @@ class StorageStats(models.Model):
     total_files = models.PositiveIntegerField(default=0)
     unique_files = models.PositiveIntegerField(default=0)
     total_size = models.BigIntegerField(default=0)
-    actual_size = models.BigIntegerField(default=0)  # Size after deduplication
-    storage_savings = models.BigIntegerField(default=0)  # Bytes saved
+    actual_size = models.BigIntegerField(default=0)  
+    storage_savings = models.BigIntegerField(default=0)  
     last_updated = models.DateTimeField(auto_now=True)
     
     class Meta:

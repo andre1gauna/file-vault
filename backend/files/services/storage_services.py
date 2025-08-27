@@ -7,13 +7,9 @@ def calculate_savings():
     unique_files = File.objects.filter(is_duplicate=False).count()
     total_size = sum(file.size for file in File.objects.all())
     
-    # Calculate actual size (unique files only)
     actual_size = sum(file.size for file in File.objects.filter(is_duplicate=False))
-    # from django.db.models import Sum
-    #actual_size =  File.objects.aggregate(total=Sum('size'))['total']
     storage_savings = total_size - actual_size
     
-    # Update or create stats
     stats, created = StorageStats.objects.update_or_create(
         id=1,
         defaults={
@@ -48,4 +44,4 @@ def calculate_distributions():
             'percentage': round((count / total_files) * 100, 2)
         }
     
-    return distribution   # <-- fora do loop
+    return distribution   

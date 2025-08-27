@@ -12,19 +12,15 @@ def create_or_update_file(file_obj: UploadedFile) -> tuple[File, dict]:
     if not file_obj:
         raise ValueError("No file provided")
 
-    # Primeiro, tenta encontrar um arquivo com o mesmo hash
     file_hash = sha256_from_uploaded(file_obj)
     
-    # Encontra o arquivo original (se for uma duplicata, pega o original)
     original_file = File.objects.filter(file_hash=file_hash, is_duplicate=False).first()
     
     if original_file:
-        # Incrementa a contagem de referências no arquivo original
         File.objects.filter(pk=original_file.pk).update(
             reference_count=F("reference_count") + 1
         )
         
-        # Cria o registro do arquivo duplicado
         duplicate = File(
             file=file_obj,
             original_filename=getattr(file_obj, "name", ""),
@@ -43,7 +39,6 @@ def create_or_update_file(file_obj: UploadedFile) -> tuple[File, dict]:
             "is_duplicate": True
         }
     
-    # Se não for duplicata, cria um novo arquivo original
     new_file = File(
         file=file_obj,
         original_filename=getattr(file_obj, "name", ""),

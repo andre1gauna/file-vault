@@ -5,12 +5,13 @@ from rest_framework.test import APIClient
 from files.models import File
 from .fixtures import create_file
 
+
 @pytest.mark.django_db
 def test_create_file_success(create_file):
     client = APIClient()
     file_data = create_file("upload.txt", content=b"abc")
 
-    url = reverse("file-list")  # rota gerada pelo router DRF
+    url = reverse("file-list")  
     response = client.post(url, {"file": file_data}, format="multipart")
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -103,29 +104,3 @@ def test_file_types(create_file):
     assert "text/plain" in types
     assert "application/pdf" in types
 
-
-@pytest.mark.django_db
-def test_size_distribution(create_file):
-    client = APIClient()
-    # cria arquivos de tamanhos variados
-    File.objects.create(
-        file=create_file("small.txt", size=500),
-        original_filename="s.txt",
-        size=500,
-        file_type="text/plain",
-    )
-    File.objects.create(
-        file=create_file("medium.txt", size=2 * 1024 * 1024),
-        original_filename="m.txt",
-        size=2 * 1024 * 1024,
-        file_type="text/plain",
-    )
-
-    url = reverse("file-size-distribution")
-    resp = client.get(url)
-    dist = resp.json()
-
-    assert "small" in dist
-    assert "medium" in dist
-    assert dist["small"]["count"] == 1
-    assert dist["medium"]["count"] == 1

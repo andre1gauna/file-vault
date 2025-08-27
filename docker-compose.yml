@@ -5,19 +5,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    # Carrega variáveis do Django a partir do arquivo definido na raiz/.env
-    env_file:
-      - ${BACKEND_ENV_FILE:-./backend/.env}
-    # Valores extras/overrides — substituem chaves iguais do env_file
     environment:
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
-      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - DJANGO_SECRET_KEY=django-insecure-default-key-for-development
+      - DJANGO_DEBUG=True
+      - DJANGO_ALLOWED_HOSTS=*
+      - CSRF_TRUSTED_ORIGINS=http://localhost,http://127.0.0.1
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
-      # Hot reload no dev: monta seu código local no container
       - ./backend:/app
-      # Persistência
       - media_data:/app/media
       - static_data:/app/staticfiles
       - db_data:/app/data
@@ -27,14 +23,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    # Carrega variáveis do frontend a partir do arquivo definido na raiz/.env
-    env_file:
-      - ${FRONTEND_ENV_FILE:-./frontend/.env.development}
     environment:
-      # Mantém compatibilidade com CRA (REACT_APP_) e Vite (VITE_)
-      REACT_APP_API_URL: ${API_URL:-http://localhost:8000/api}
-      VITE_API_URL: ${API_URL:-http://localhost:8000/api}
-      PORT: ${FRONTEND_PORT:-3000}
+      - REACT_APP_API_URL=http://localhost:8000/api
     ports:
       - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
     volumes:

@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { FileList } from '../components/FileList';
 import { fileService } from '../services/fileService';
 
-// 🔧 Mock do service
 jest.mock('../services/fileService', () => ({
   fileService: {
     getFiles: jest.fn(),
@@ -13,7 +12,6 @@ jest.mock('../services/fileService', () => ({
   },
 }));
 
-// Helper para renderizar com React Query Provider
 const renderWithClient = (ui: React.ReactElement) => {
   const queryClient = new QueryClient();
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
@@ -28,7 +26,6 @@ describe('FileList component', () => {
     (fileService.getFiles as jest.Mock).mockReturnValue(new Promise(() => {})); // nunca resolve
 
     renderWithClient(<FileList />);
-    // verifica se o skeleton está na tela
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
@@ -36,7 +33,6 @@ describe('FileList component', () => {
     (fileService.getFiles as jest.Mock).mockRejectedValue(new Error('Network error'));
 
     renderWithClient(<FileList />);
-    // em caso de erro, o componente ainda exibe skeleton
     await waitFor(() => {
       expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
     });

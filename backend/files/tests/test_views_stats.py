@@ -1,131 +1,89 @@
 import pytest
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-from files.models import File
+from django.core.files.base import ContentFile
+from files.models import File, StorageStats
+from files.services import storage_services
 from .fixtures import create_file
 
+
 @pytest.mark.django_db
-def test_create_file_success(create_file):
-    client = APIClient()
-    file_data = create_file("upload.txt", content=b"abc")
-
-    url = reverse("file-list")  # rota gerada pelo router DRF
-    response = client.post(url, {"file": file_data}, format="multipart")
-
-    assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
-    assert "id" in data
-    assert data["original_filename"] == "upload.txt"
-    assert data["is_duplicate"] is False
+def test_calculate_savings_no_files():
+    storage_services.calculate_savings()
+    stats = StorageStats.objects.get(id=1)
+    assert stats.total_files == 0
+    assert stats.unique_files == 0
+    assert stats.total_size == 0
+    assert stats.actual_size == 0
+    assert stats.storage_savings == 0
 
 
 @pytest.mark.django_db
-def test_create_file_no_file_error():
-    client = APIClient()
-    url = reverse("file-list")
-    response = client.post(url, {}, format="multipart")
-
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "error" in response.json()
-
-
-@pytest.mark.django_db
-def test_destroy_file(create_file):
-    client = APIClient()
-    f = File.objects.create(
-        file=create_file("delete.txt", content=b"abc"),
-        original_filename="delete.txt",
-        size=3,
-        file_type="text/plain",
-    )
-
-    url = reverse("file-detail", args=[f.pk])
-    response = client.delete(url)
-
-    assert response.status_code == status.HTTP_204_NO_CONTENT
-    assert File.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_duplicates_and_unique(create_file):
-    client = APIClient()
-
-    f1 = File.objects.create(
-        file=create_file("orig.txt", content=b"abc"),
-        original_filename="orig.txt",
+def test_calculate_savings_with_duplicates(create_file):
+    File.objects.create(
+        file=create_file("a.txt", b"abc"),
+        original_filename="a.txt",
         size=3,
         file_type="text/plain",
         is_duplicate=False,
     )
-    f2 = File.objects.create(
-        file=create_file("dup.txt", content=b"abc"),
-        original_filename="dup.txt",
+    File.objects.create(
+        file=create_file("b.txt", b"xyz"),
+        original_filename="b.txt",
         size=3,
         file_type="text/plain",
         is_duplicate=True,
-        original_file=f1,
     )
 
-    url_dup = reverse("file-duplicates")
-    url_unique = reverse("file-unique")
-
-    resp_dup = client.get(url_dup)
-    resp_unique = client.get(url_unique)
-
-    assert len(resp_dup.json()) == 1
-    assert resp_dup.json()[0]["original_filename"] == "dup.txt"
-
-    assert len(resp_unique.json()) == 1
-    assert resp_unique.json()[0]["original_filename"] == "orig.txt"
+    storage_services.calculate_savings()
+    stats = StorageStats.objects.get(id=1)
+    assert stats.total_files == 2
+    assert stats.unique_files == 1
+    assert stats.total_size == 6
+    assert stats.actual_size == 3
+    assert stats.storage_savings == 3
 
 
 @pytest.mark.django_db
-def test_file_types(create_file):
-    client = APIClient()
-    File.objects.create(
-        file=create_file("f.txt", content=b"abc"),
-        original_filename="f.txt",
-        size=3,
-        file_type="text/plain",
-    )
-    File.objects.create(
-        file=create_file("g.pdf", content=b"xyz"),
-        original_filename="g.pdf",
-        size=3,
-        file_type="application/pdf",
-    )
-
-    url = reverse("file-file-types")
-    resp = client.get(url)
-    types = resp.json()
-
-    assert "text/plain" in types
-    assert "application/pdf" in types
+def test_calculate_distributions_empty():
+    dist = storage_services.calculate_distributions()
+    assert dist == {}
 
 
 @pytest.mark.django_db
-def test_size_distribution(create_file):
-    client = APIClient()
-    # cria arquivos de tamanhos variados
+def test_calculate_distributions_all_ranges(create_file):
+    # small (< 1MB)
     File.objects.create(
-        file=create_file("small.txt", size=500),
-        original_filename="s.txt",
-        size=500,
+        file=create_file("small.txt", b"x" * 100),
+        original_filename="small.txt",
+        size=100,
         file_type="text/plain",
     )
+    # medium (1MB–10MB)
     File.objects.create(
-        file=create_file("medium.txt", size=2 * 1024 * 1024),
-        original_filename="m.txt",
+        file=create_file("medium.txt", b"x" * (2 * 1024 * 1024)),
+        original_filename="medium.txt",
         size=2 * 1024 * 1024,
         file_type="text/plain",
     )
+    # large (10MB–100MB)
+    File.objects.create(
+        file=create_file("large.txt", b"x" * (20 * 1024 * 1024)),
+        original_filename="large.txt",
+        size=20 * 1024 * 1024,
+        file_type="application/octet-stream",
+    )
+    # huge (>= 100MB)
+    File.objects.create(
+        file=create_file("huge.txt", b"x" * (120 * 1024 * 1024)),
+        original_filename="huge.txt",
+        size=120 * 1024 * 1024,
+        file_type="application/octet-stream",
+    )
 
-    url = reverse("file-size-distribution")
-    resp = client.get(url)
-    dist = resp.json()
+    dist = storage_services.calculate_distributions()
 
-    assert "small" in dist
-    assert "medium" in dist
     assert dist["small"]["count"] == 1
     assert dist["medium"]["count"] == 1
+    assert dist["large"]["count"] == 1
+    assert dist["huge"]["count"] == 1
+    total_percentage = sum(d["percentage"] for d in dist.values())
+    assert round(total_percentage, 2) == 100.0
