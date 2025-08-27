@@ -28,14 +28,13 @@ def calculate_savings():
 def calculate_distributions():
     total_files = File.objects.count()
     if total_files == 0:
-        return 0
+        return {}
     
-    # Size ranges in bytes
     size_ranges = {
-        'small': (0, 1024 * 1024),      # 0 - 1MB
-        'medium': (1024 * 1024, 10 * 1024 * 1024),  # 1MB - 10MB
-        'large': (10 * 1024 * 1024, 100 * 1024 * 1024),  # 10MB - 100MB
-        'huge': (100 * 1024 * 1024, float('inf'))  # 100MB+
+        'small': (0, 1024 * 1024),
+        'medium': (1024 * 1024, 10 * 1024 * 1024),
+        'large': (10 * 1024 * 1024, 100 * 1024 * 1024),
+        'huge': (100 * 1024 * 1024, float('inf'))
     }
     
     distribution = {}
@@ -48,4 +47,5 @@ def calculate_distributions():
             'count': count,
             'percentage': round((count / total_files) * 100, 2)
         }
-        return distribution
+    
+    return distribution   # <-- fora do loop
